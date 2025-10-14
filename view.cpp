@@ -1,8 +1,7 @@
 #include "core.h"
 #include "view.h"
 
-int main()
-{
+int main() {
     // Create Window
     GLFWwindow* window = NULL;
     ImFont* pFont = NULL;
@@ -18,8 +17,7 @@ int main()
     setupSerial(&serial);
 
     // Main loop
-    while(!glfwWindowShouldClose(window))
-    {
+    while(!glfwWindowShouldClose(window)) {
         // Data
         readSerialLineRaw(1, &serial, serialFileDescriptor);
 
@@ -33,7 +31,7 @@ int main()
         
         // Window title
         char title[128];
-        snprintf(title, sizeof(title), "Serial graph - FPS: %.1f", ImGui::GetIO().Framerate);
+        snprintf(title, sizeof(title), "Serial - FPS: %.1f", ImGui::GetIO().Framerate);
         glfwSetWindowTitle(window, title);
 
         // Body
@@ -55,9 +53,7 @@ int main()
     return 0;
 }
 
-
-int renderToolbar(void)
-{
+int renderToolbar(void) {
     ImGui::SetNextWindowPos(ImVec2(0, 26), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, 70), ImGuiCond_Always);
     ImGui::Begin(" ", NULL,
@@ -70,16 +66,13 @@ int renderToolbar(void)
     return 1;
 }
 
-
-int renderGraphSerial(Serial *serial)
-{
+int renderGraphSerial(Serial *serial) {
     int n = serial->capacity;
 
     if (n > serial->capacity)
          n = serial->capacity;
 
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++) {
         int index = (serial->head - n + i + serial->capacity) % serial->capacity;
         serial->doubleListX[i] = i;
         serial->doubleListY[i]  = strtof(serial->buffer[index][0], NULL);
@@ -100,11 +93,11 @@ int renderGraphSerial(Serial *serial)
     double y_min = 1000;
     double y_max = 2600.0;
 
-    if (ImPlot::BeginPlot("Serial", ImVec2(-1, ImGui::GetContentRegionAvail().y))) {
-
+    if (ImPlot::BeginPlot("Graph", ImVec2(-1, ImGui::GetContentRegionAvail().y))) {
         ImPlot::SetupAxisLimits(ImAxis_Y1, y_min, y_max, ImGuiCond_Always);
-
-        ImPlot::PlotLine("ac0", serial->doubleListX, serial->doubleListY, n);
+        ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 2.0f);
+        ImPlot::PlotLine("ac0 (mv)", serial->doubleListX, serial->doubleListY, n);
+        ImPlot::PopStyleVar();
         ImPlot::EndPlot();
     }
 
@@ -113,11 +106,9 @@ int renderGraphSerial(Serial *serial)
 }
 
 
-int initImGUI(GLFWwindow** window, ImFont** pFont)
-{
+int initImGUI(GLFWwindow** window, ImFont** pFont) {
     // Initialize GLFW
-    if (!glfwInit())
-    {
+    if (!glfwInit()) {
         fprintf(stderr, "ERROR: Failed to initialize GLFW \n");
 	    return -1;
     }
@@ -125,13 +116,11 @@ int initImGUI(GLFWwindow** window, ImFont** pFont)
     // Create a window
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-
     *window = glfwCreateWindow(mode->width, mode->height, "Sparkland", NULL, NULL);
     glfwSetWindowAttrib(*window, GLFW_DECORATED, GLFW_TRUE);
     glfwSetWindowPos(*window, 0, 0);
 
-    if (!*window)
-    {
+    if (!*window) {
         glfwTerminate();
 	    return -1;
     }
@@ -139,8 +128,7 @@ int initImGUI(GLFWwindow** window, ImFont** pFont)
     glfwMakeContextCurrent(*window);
 
     // Initialize OpenGL loader
-    if (glewInit() != GLEW_OK)
-    {
+    if (glewInit() != GLEW_OK) {
     	fprintf(stderr, "ERROR: Failed to initialize OpenGL loader (GLEW) \n");
 	    return -1;
     }
@@ -164,7 +152,6 @@ int initImGUI(GLFWwindow** window, ImFont** pFont)
 
     return 1;
 }
-
 
 void cleanIMGUI(GLFWwindow** window) {
 

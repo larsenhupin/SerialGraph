@@ -1,8 +1,7 @@
 #include "core.h"
 
 // Serial functions
-void configureTermios(int* fileDescriptor)
-{
+void configureTermios(int* fileDescriptor) {
     struct termios tty;
     if (tcgetattr(*fileDescriptor, &tty) != 0) fprintf(stderr, "tcgetattr failed on fd=%d: %s\n", *fileDescriptor, strerror(errno));
 
@@ -26,9 +25,7 @@ void configureTermios(int* fileDescriptor)
     return;
 }
 
-
-void setupSerial(Serial *serial)
-{
+void setupSerial(Serial *serial) {
     memset(serial, 0, sizeof(*serial));
 
     serial->separator = ",";
@@ -51,18 +48,14 @@ void setupSerial(Serial *serial)
     serial->cols = 0;
 }
 
-
-void cleanSerial(Serial *serial)
-{
+void cleanSerial(Serial *serial) {
     free(serial->buffer);
     free(serial->doubleListX);
     free(serial->doubleListY);
     free(serial->doubleListY2);
 }
 
-
-void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor)
-{
+void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor) {
     if (!run) return;
 
     static char lineBuffer[READ_BUF_SIZE];
@@ -71,18 +64,15 @@ void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor)
     char buffer[64];
     ssize_t bytesRead = read(serialFileDescriptor, buffer, sizeof(buffer));
 
-    if (bytesRead < 0)
-    {
+    if (bytesRead < 0) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) fprintf(stderr, "read failed on fd=%d: %s\n", serialFileDescriptor, strerror(errno));
         return;
     }
 
-    for (ssize_t i = 0; i < bytesRead; i++)
-    {
+    for (ssize_t i = 0; i < bytesRead; i++) {
         char c = buffer[i];
 
-        if (c == '\n') // End of line
-        {
+        if (c == '\n') {
             lineBuffer[linePosition] = '\0'; // Add null termination 
 
             // Parse line into tokens
@@ -90,8 +80,7 @@ void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor)
             int col = 0;
             char *token = strtok(lineBuffer, serial->separator);
 
-            while (token != NULL && col < MAX_COLUMNS)
-            {
+            while (token != NULL && col < MAX_COLUMNS) {
                 strncpy(serial->buffer[row][col], token, MAX_LENGTH - 1);
                 serial->buffer[row][col][MAX_LENGTH - 1] = '\0';
                 token = strtok(NULL, serial->separator);
@@ -110,8 +99,7 @@ void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor)
             continue;
         }
         
-        if (linePosition >= READ_BUF_SIZE - 1)
-        {
+        if (linePosition >= READ_BUF_SIZE - 1) {
             fprintf(stderr, "Line buffer overflow\n"); // Discard the the whole line
             linePosition = 0;
             continue;
