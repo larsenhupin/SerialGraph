@@ -66,13 +66,9 @@ int renderToolbar(void) {
 }
 
 int renderGraphSerial(Serial *serial) {
-    int n = serial->capacity;
 
-    if (n > serial->capacity)
-         n = serial->capacity;
-
-    for (int i = 0; i < n; i++) {
-        int index = (serial->head - n + i + serial->capacity) % serial->capacity;
+    for (int i = 0; i < serial->capacity; i++) {
+        int index = (serial->head - serial->capacity + i + serial->capacity) % serial->capacity;
         serial->xAxisData[i] = i;
         serial->yAxisData[i]  = strtof(serial->buffer[index][0], NULL);
     }
@@ -94,7 +90,7 @@ int renderGraphSerial(Serial *serial) {
     if (ImPlot::BeginPlot("Graph", ImVec2(-1, ImGui::GetContentRegionAvail().y))) {
         ImPlot::SetupAxisLimits(ImAxis_Y1, y_min, y_max, ImGuiCond_Always);
         ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 2.0f);
-        ImPlot::PlotLine("ac0 (mv)", serial->xAxisData, serial->yAxisData, n);
+        ImPlot::PlotLine("ac0 (mv)", serial->xAxisData, serial->yAxisData, serial->capacity);
         ImPlot::PopStyleVar();
         ImPlot::EndPlot();
     }

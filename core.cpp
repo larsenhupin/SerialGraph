@@ -31,8 +31,6 @@ void setupSerial(Serial *serial) {
     serial->xAxisData = (double *)malloc(serial->capacity * sizeof(double));
     serial->yAxisData = (double *)malloc(serial->capacity * sizeof(double));
     serial->head = 0;
-    serial->count = 0;
-    serial->cols = 0;
 }
 
 void cleanSerial(Serial *serial) {
@@ -43,44 +41,32 @@ void cleanSerial(Serial *serial) {
 
 void readSerialLineRaw(Serial *serial, int fileDescriptor) {
 
-    static char lineBuffer[SERIAL_READ_CHUNK_SIZE];
-    static size_t linePosition = 0;
-    char buffer[64];
-    ssize_t bytesRead = read(fileDescriptor, buffer, sizeof(buffer));
+    static char line[SERIAL_READ_CHUNK_SIZE];
+    static size_t position = 0;
+    char readBuffer[64];
+    ssize_t readBufferBytes = read(fileDescriptor, readBuffer, sizeof(readBuffer));
 
-    for (ssize_t i = 0; i < bytesRead; i++) {
-        char c = buffer[i];
+    for (ssize_t i = 0; i < readBufferBytes; i++) {
+        
+        char c = readBuffer[i];
 
-        if (c == '\n') {
-            lineBuffer[linePosition] = '\0'; // Add null termination 
+        if (c != '\n') {
+            line[position] = c;
+            position++;
+        }
+        else {
+            line[position] = '\0'; // Add null termination 
+            char *token = strtok(line, serial->separator);
 
-            int row = serial->head;
-            int col = 0;
-            char *token = strtok(lineBuffer, serial->separator);
-
-            while (token != NULL && col < SERIAL_MAX_COLUMNS) {
-                strncpy(serial->buffer[row][col], token, SERIAL_MAX_TOKEN_LEN - 1);
-                serial->buffer[row][col][SERIAL_MAX_TOKEN_LEN - 1] = '\0';
+            for (int col = 0; token != NULL && col < SERIAL_MAX_COLUMNS; col++) {
+                
+                snprintf(serial->buffer[serial->head][col], SERIAL_MAX_TOKEN_LEN, "%s", token);
+                serial->buffer[serial->head][col][SERIAL_MAX_TOKEN_LEN - 1] = '\0';
                 token = strtok(NULL, serial->separator);
-                col++;
-
-                if (col > serial->cols)
-                    serial->cols = col;
             }
 
-            serial->head = (serial->head + 1) % serial->capacity; // Advance head and count
-            if (serial->count < serial->capacity)
-                serial->count++;
-
-            linePosition = 0; // Reset line position
-            continue;
+            serial->head = (serial->head + 1) % serial->capacity; // Advance head using circular buffer
+            position = 0; // Reset line position
         }
-        
-        if (linePosition >= SERIAL_READ_CHUNK_SIZE - 1) { // Line buffer overflow
-            linePosition = 0;
-            continue;
-        }
-
-        lineBuffer[linePosition++] = c;
     }
 }
