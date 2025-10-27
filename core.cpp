@@ -25,12 +25,12 @@ void configureTermios(int* fileDescriptor) {
 
 void setupSerial(Serial *serial) {    
     memset(serial, 0, sizeof(*serial));
+    serial->head = 0;
     serial->separator = ",";
     serial->capacity  = SERIAL_MAX_LINES;
-    serial->buffer = (char (*)[SERIAL_MAX_COLUMNS][SERIAL_MAX_TOKEN_LEN]) malloc(SERIAL_MAX_LINES * sizeof(*serial->buffer));
-    serial->xAxisData = (double *)malloc(serial->capacity * sizeof(double));
-    serial->yAxisData = (double *)malloc(serial->capacity * sizeof(double));
-    serial->head = 0;
+    serial->buffer = (SerialBuffer *) malloc(SERIAL_MAX_LINES * sizeof(*serial->buffer));
+    serial->xAxisData = (double *) malloc(serial->capacity * sizeof(double));
+    serial->yAxisData = (double *) malloc(serial->capacity * sizeof(double));
 }
 
 void cleanSerial(Serial *serial) {

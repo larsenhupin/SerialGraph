@@ -11,8 +11,10 @@
 #define SERIAL_MAX_LINES 1300
 #define SERIAL_READ_CHUNK_SIZE 256
 
+typedef char SerialBuffer[SERIAL_MAX_COLUMNS][SERIAL_MAX_TOKEN_LEN];
+
 typedef struct {
-    char (*buffer)[SERIAL_MAX_COLUMNS][SERIAL_MAX_TOKEN_LEN];
+    SerialBuffer *buffer;
     double *xAxisData;
     double *yAxisData;
     int capacity;
