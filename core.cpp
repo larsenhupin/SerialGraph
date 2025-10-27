@@ -2,47 +2,34 @@
 
 // Serial functions
 void configureTermios(int* fileDescriptor) {
-    struct termios tty;
-    if (tcgetattr(*fileDescriptor, &tty) != 0) fprintf(stderr, "tcgetattr failed on fd=%d: %s\n", *fileDescriptor, strerror(errno));
 
-    cfsetispeed(&tty, B9600);
-    cfsetospeed(&tty, B9600);
-
-    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; // 8-bit chars
-    tty.c_iflag &= ~IGNBRK;                     // disable break processing
-    tty.c_lflag = 0;                            // no signaling chars, no echo
-    tty.c_oflag = 0;                            // no remapping, no delays
-    tty.c_cc[VMIN]  = 1;                        // read returns each byte
-    tty.c_cc[VTIME] = 0;                        // no timeout
-    tty.c_iflag &= ~(IXON | IXOFF | IXANY);     // shut off xon/xoff ctrl
-    tty.c_cflag |= (CLOCAL | CREAD);            // ignore modem, enable read
-    tty.c_cflag &= ~(PARENB | PARODD);          // no parity
-    tty.c_cflag &= ~CSTOPB;                     // 1 stop bit
-    tty.c_cflag &= ~CRTSCTS;                    // no flow control
-
-    if (tcsetattr(*fileDescriptor, TCSANOW, &tty) != 0) fprintf(stderr, "tcsetattr failed on fd=%d: %s\n", *fileDescriptor, strerror(errno));
+    struct termios options;
+    tcgetattr(*fileDescriptor, &options);               // Get the current options
+    cfsetispeed(&options, B9600);                       // Set input baud rate to 9600
+    cfsetospeed(&options, B9600);                       // Set output baud rate to 9600
+    options.c_cflag &= ~PARENB;                         // Disable parity checking
+    options.c_cflag &= ~CSTOPB;                         // Use 1 stop bit
+    options.c_cflag &= ~CSIZE;                          // Mask the character size
+    options.c_cflag |= CS8;                             // Select 8-bit data size
+    options.c_cflag |= (CLOCAL | CREAD);                // Enable receiver and ignore modem control lines
+    options.c_cflag &= ~CRTSCTS;                        // Disable hardware flow control
+    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); // Disable canonical, echoing, signal generation (raw input)
+    options.c_iflag &= ~(IXON | IXOFF | IXANY);         // Disable software flow control
+    options.c_oflag &= ~OPOST;                          // Select raw output
+    options.c_cc[VMIN]  = 0;                            // Return immediately if data is available
+    options.c_cc[VTIME] = 10;                           // Return 0 if no data arrives within 1 second
+    tcsetattr(*fileDescriptor, TCSANOW, &options);      // Set the new options
 
     return;
 }
 
-void setupSerial(Serial *serial) {
+void setupSerial(Serial *serial) {    
     memset(serial, 0, sizeof(*serial));
-
     serial->separator = ",";
-    serial->capacity  = SERIAL_BUF_SIZE;
-
-    // Allocate rows dynamically
-    serial->buffer = (char (*)[MAX_COLUMNS][MAX_LENGTH]) malloc(SERIAL_BUF_SIZE * sizeof(*serial->buffer));
-    serial->doubleListX = (double *)malloc(serial->capacity * sizeof(double));
-    serial->doubleListY = (double *)malloc(serial->capacity * sizeof(double));
-    serial->doubleListY2 = (double *)malloc(serial->capacity * sizeof(double));
-
-    if (!serial->buffer)
-    {
-        fprintf(stderr, "ERROR: malloc failed for serial->buffer\n");
-        exit(1);
-    }
-
+    serial->capacity  = SERIAL_MAX_LINES;
+    serial->buffer = (char (*)[SERIAL_MAX_COLUMNS][SERIAL_MAX_TOKEN_LEN]) malloc(SERIAL_MAX_LINES * sizeof(*serial->buffer));
+    serial->xAxisData = (double *)malloc(serial->capacity * sizeof(double));
+    serial->yAxisData = (double *)malloc(serial->capacity * sizeof(double));
     serial->head = 0;
     serial->count = 0;
     serial->cols = 0;
@@ -50,24 +37,16 @@ void setupSerial(Serial *serial) {
 
 void cleanSerial(Serial *serial) {
     free(serial->buffer);
-    free(serial->doubleListX);
-    free(serial->doubleListY);
-    free(serial->doubleListY2);
+    free(serial->xAxisData);
+    free(serial->yAxisData);
 }
 
-void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor) {
-    if (!run) return;
+void readSerialLineRaw(Serial *serial, int fileDescriptor) {
 
-    static char lineBuffer[READ_BUF_SIZE];
+    static char lineBuffer[SERIAL_READ_CHUNK_SIZE];
     static size_t linePosition = 0;
-
     char buffer[64];
-    ssize_t bytesRead = read(serialFileDescriptor, buffer, sizeof(buffer));
-
-    if (bytesRead < 0) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK) fprintf(stderr, "read failed on fd=%d: %s\n", serialFileDescriptor, strerror(errno));
-        return;
-    }
+    ssize_t bytesRead = read(fileDescriptor, buffer, sizeof(buffer));
 
     for (ssize_t i = 0; i < bytesRead; i++) {
         char c = buffer[i];
@@ -75,14 +54,13 @@ void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor) {
         if (c == '\n') {
             lineBuffer[linePosition] = '\0'; // Add null termination 
 
-            // Parse line into tokens
             int row = serial->head;
             int col = 0;
             char *token = strtok(lineBuffer, serial->separator);
 
-            while (token != NULL && col < MAX_COLUMNS) {
-                strncpy(serial->buffer[row][col], token, MAX_LENGTH - 1);
-                serial->buffer[row][col][MAX_LENGTH - 1] = '\0';
+            while (token != NULL && col < SERIAL_MAX_COLUMNS) {
+                strncpy(serial->buffer[row][col], token, SERIAL_MAX_TOKEN_LEN - 1);
+                serial->buffer[row][col][SERIAL_MAX_TOKEN_LEN - 1] = '\0';
                 token = strtok(NULL, serial->separator);
                 col++;
 
@@ -90,8 +68,7 @@ void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor) {
                     serial->cols = col;
             }
 
-            // Advance head and count
-            serial->head = (serial->head + 1) % serial->capacity;
+            serial->head = (serial->head + 1) % serial->capacity; // Advance head and count
             if (serial->count < serial->capacity)
                 serial->count++;
 
@@ -99,8 +76,7 @@ void readSerialLineRaw(int run, Serial *serial, int serialFileDescriptor) {
             continue;
         }
         
-        if (linePosition >= READ_BUF_SIZE - 1) {
-            fprintf(stderr, "Line buffer overflow\n"); // Discard the the whole line
+        if (linePosition >= SERIAL_READ_CHUNK_SIZE - 1) { // Line buffer overflow
             linePosition = 0;
             continue;
         }

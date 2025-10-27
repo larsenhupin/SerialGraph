@@ -6,17 +6,15 @@
 #include <fcntl.h>
 #include <termios.h> 
 
-#define MAX_LENGTH 100
-#define MAX_COLUMNS 20
-#define SERIAL_BUF_SIZE 1300
-#define READ_BUF_SIZE 256
+#define SERIAL_MAX_TOKEN_LEN 100
+#define SERIAL_MAX_COLUMNS 20
+#define SERIAL_MAX_LINES 1300
+#define SERIAL_READ_CHUNK_SIZE 256
 
-// Serial interface
 typedef struct {
-    char (*buffer)[MAX_COLUMNS][MAX_LENGTH];
-    double *doubleListX;
-    double *doubleListY;
-    double *doubleListY2;
+    char (*buffer)[SERIAL_MAX_COLUMNS][SERIAL_MAX_TOKEN_LEN];
+    double *xAxisData;
+    double *yAxisData;
     int head, count, capacity;
     size_t cols;
     const char *separator;
@@ -25,4 +23,4 @@ typedef struct {
 void configureTermios(int* fileDescriptor);
 void setupSerial(Serial *serial);
 void cleanSerial(Serial *serial);
-void readSerialLineRaw(int run, Serial *serial, int serialFd);
+void readSerialLineRaw(Serial *serial, int fileDescriptor);

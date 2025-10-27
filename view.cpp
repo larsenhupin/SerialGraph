@@ -8,9 +8,8 @@ int main() {
     int init = initImGUI(&window, &pFont);
 
     // Open serial and setup termios
-    int serialFileDescriptor = open("/dev/ttyUSB0", O_RDONLY | O_NOCTTY | O_NONBLOCK);
-    if (serialFileDescriptor < 0) fprintf(stderr, "open failed for /dev/ttyUSB0: %s\n", strerror(errno));
-    configureTermios(&serialFileDescriptor);
+    int fileDescriptor = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NONBLOCK);
+    configureTermios(&fileDescriptor);
 
     // Setup serial
     Serial serial;
@@ -19,7 +18,7 @@ int main() {
     // Main loop
     while(!glfwWindowShouldClose(window)) {
         // Data
-        readSerialLineRaw(1, &serial, serialFileDescriptor);
+        readSerialLineRaw(&serial, fileDescriptor);
 
         // Events
         glfwPollEvents();
@@ -47,7 +46,7 @@ int main() {
 
     // Free memory
     cleanSerial(&serial);
-    if (close(serialFileDescriptor) < 0) fprintf(stderr, "Error closing fd=%d: %s\n", serialFileDescriptor, strerror(errno));
+    close(fileDescriptor);
     cleanIMGUI(&window);
 
     return 0;
@@ -74,9 +73,8 @@ int renderGraphSerial(Serial *serial) {
 
     for (int i = 0; i < n; i++) {
         int index = (serial->head - n + i + serial->capacity) % serial->capacity;
-        serial->doubleListX[i] = i;
-        serial->doubleListY[i]  = strtof(serial->buffer[index][0], NULL);
-        serial->doubleListY2[i] = strtof(serial->buffer[index][1], NULL);
+        serial->xAxisData[i] = i;
+        serial->yAxisData[i]  = strtof(serial->buffer[index][0], NULL);
     }
 
     ImGui::SetNextWindowPos(ImVec2(0, 70), ImGuiCond_Always);
@@ -96,7 +94,7 @@ int renderGraphSerial(Serial *serial) {
     if (ImPlot::BeginPlot("Graph", ImVec2(-1, ImGui::GetContentRegionAvail().y))) {
         ImPlot::SetupAxisLimits(ImAxis_Y1, y_min, y_max, ImGuiCond_Always);
         ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 2.0f);
-        ImPlot::PlotLine("ac0 (mv)", serial->doubleListX, serial->doubleListY, n);
+        ImPlot::PlotLine("ac0 (mv)", serial->xAxisData, serial->yAxisData, n);
         ImPlot::PopStyleVar();
         ImPlot::EndPlot();
     }
