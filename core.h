@@ -15,8 +15,8 @@ typedef char SerialBuffer[SERIAL_MAX_COLUMNS][SERIAL_MAX_TOKEN_LEN];
 
 typedef struct {
     SerialBuffer *buffer;
-    double *xAxisData;
-    double *yAxisData;
+    int *xAxisData;
+    int *yAxisData;
     int capacity;
     int head;
     const char *separator;

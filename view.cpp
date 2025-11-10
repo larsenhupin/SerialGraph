@@ -26,7 +26,7 @@ int main() {
         // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        ImGui::NewFrame();  
         
         // Window title
         char title[128];

@@ -29,8 +29,8 @@ void setupSerial(Serial *serial) {
     serial->separator = ",";
     serial->capacity  = SERIAL_MAX_LINES;
     serial->buffer = (SerialBuffer *) malloc(SERIAL_MAX_LINES * sizeof(*serial->buffer));
-    serial->xAxisData = (double *) malloc(serial->capacity * sizeof(double));
-    serial->yAxisData = (double *) malloc(serial->capacity * sizeof(double));
+    serial->xAxisData = (int *) malloc(serial->capacity * sizeof(int));
+    serial->yAxisData = (int *) malloc(serial->capacity * sizeof(int));
 }
 
 void cleanSerial(Serial *serial) {
@@ -55,13 +55,11 @@ void readSerialLineRaw(Serial *serial, int fileDescriptor) {
             position++;
         }
         else {
-            line[position] = '\0'; // Add null termination 
             char *token = strtok(line, serial->separator);
 
             for (int col = 0; token != NULL && col < SERIAL_MAX_COLUMNS; col++) {
                 
-                snprintf(serial->buffer[serial->head][col], SERIAL_MAX_TOKEN_LEN, "%s", token);
-                serial->buffer[serial->head][col][SERIAL_MAX_TOKEN_LEN - 1] = '\0';
+                strncpy(serial->buffer[serial->head][col], token, SERIAL_MAX_TOKEN_LEN);
                 token = strtok(NULL, serial->separator);
             }
 
